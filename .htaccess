@@ -1,5 +1,0 @@
-# Apache 2.4
-FallbackResource /index.php
-
-# Nginx
-#location / { try_files $uri /index.php =404; }
