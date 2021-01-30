@@ -1,0 +1,32 @@
+/* CSS for the 404 PAGE */
+
+.error-page-wrapper {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	text-align: center;
+	max-width: 800px;
+}
+
+.error-image {
+	margin: 24px;
+	max-width: 320px;
+	border-radius: 40px;
+	overflow: hidden;
+	align-self: center;
+}
+
+.error-image img {
+	width: 100%;
+	object-fit: cover;
+}
+
+.error-page-wrapper h1 {
+	font-size: 2rem;
+}
+
+.error-page-wrapper p {
+	align-self: center;
+	max-width: 48ch;
+	margin: -8px 0 24px;
+}
