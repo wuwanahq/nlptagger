@@ -1,54 +1,62 @@
-NLP_Wuwana script objetive is to apply NLP techniques in order to extract Tags (topics) from  companies descriptions . 
+# Wuwana's NLP Python script
 
-# Installation
+The objective of this script is to apply NLP techniques in order to extract topics (tags) from a body of text. 
 
-In order to use the script there must be installed:
+It is used for the project [wuwana2](https://github.com/wuwanahq/wuwana2) to automatically classify a company based on the text from their website and social media.
 
-- Python 3.7
+## Requirements 
 
-and launch the following command to install all the libraries required:
+- [Python 3.7](https://www.python.org/downloads/) or higher.
+- A MySQL database
 
-- pip install -r requirements.txt
+## Steps
 
-Once everything is installed, it is necessary to download a Spacy pretrained model in the desired folder.
+1. Launch the following command to install all the libraries required:
 
-- python -m spacy download en_core_web_lg
+```
+pip install -r requirements.txt
+```
+2. Download a Spacy pretrained model in the desired folder:
 
-This model can be switched with some other english one from https://spacy.io/models/en
+```
+python -m spacy download en_core_web_lg
+```
 
+> This model can be switched with some other english one from https://spacy.io/models/en
 
-# Config
+## Config files
+### 1. General
 
-There is a config file that defines general aspects of the script:
+Use the **config.py** to define general aspects of the script:
 
-- max_words = 5 # Max number of words/tags to be returned by default. Gensims is limited to 3 by default.
-- lib = "wordcloud" # NLP library to be used (wordcloud or gensim).
-- desc_field = "description" # field from company table where description text is taken.
-- weight_field = "NLPInfoTag" # Field in company table where weights will be stored.
-- remove_words = "./data/words_to_remove.txt" # path to file of words to be removed.        
-- replace_words = "./data/words_to_replace.txt" # replace_words: path to file of words to be replaced.
-- languages = ["es","fr","zh-cn"] # list of languages to be translated, apart from english. Same order is followed in output.
-- spacy_model = "./en_core_web_lg" # spacy pretrained model.
+- **max_words** = 5 - *Max number of words/tags to be returned by default. Gensims is limited to 3 by default.*
+- **lib** = "wordcloud" - *NLP library to be used (wordcloud or gensim).*
+- **desc_field** = "description" - *field from company table where description text is taken.*
+- **weight_field** = "NLPInfoTag" - *Field in company table where weights will be stored.*
+- **remove_words** = "./data/words_to_remove.txt" - *path to file of words to be removed.*   
+- **replace_words** = "./data/words_to_replace.txt" - *replace_words: path to file of words to be replaced.*
+- **languages** = ["es","fr","zh-cn"] - *list of languages to be translated, apart from english. Same order is followed in output.*
+- **spacy_model** = "./en_core_web_lg" - *spacy pretrained model.*
 
-There is also another file with database parameters, called database_config.py.
+### 2. Database
 
+Use the **database_config.py** to connect to the MySQL database.
 
-# USE
+## How to run the script
 
 Once defined properly the config file, we can launch the script from a command line this way:
 
-- python main.py --onlyid ID
+```
+python main.py --onlyid ID
+```
 
-being ID the Id of the company table we want to update. This command will launch script which will take description text
-from desc_field column (in company table), will extract main topics (including weights), for them. Those topics will be stored
-in the following table/fields:
+Where **ID** the id of the company in the database we want to update. This command will launch the script which will take the text from **desc_field** column (in the company table) and extract the main topics (including weights).
 
-- Table Tag: This table that have tags ID and descriptions (translated according to languages in config file) is updated with all new tags discovered.
-- Table Company: For the id selected, 4 columns will be updated: FirstTagID (main tag), SecondTagID (second main tag), OtherTags (rest of them) and NLPInfoTag (or other field selected in config file, with the 
-weights returned by NLP algos). 
+Topics will be stored in the following table/fields:
 
-
-
-
-
-
+- **Tag table:** This table holds tags ID and descriptions (translated according to languages in config file). The table is updated when a new tag is discovered.
+- **Company table:** For the selected ID, four columns are updated: 
+  - FirstTagID (main tag)
+  - SecondTagID (second main tag)
+  - OtherTags (rest of them)
+  - NLPInfoTag (or other field selected in config file, with the weights returned by NLP algos).
