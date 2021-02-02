@@ -59,4 +59,4 @@ Topics will be stored in the following table/fields:
   - FirstTagID (main tag)
   - SecondTagID (second main tag)
   - OtherTags (rest of them)
-  - NLPInfoTag (or other field selected in config file, with the weights returned by NLP algos).
+  - NLPInfoTag (or other field selected in config file, with the weights returned by NLP algos)
