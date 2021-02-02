@@ -8,7 +8,7 @@ import sys
 import functions
 import config
 import database_config
-import  pymysql
+import pymysql
 import argparse
 import click
 

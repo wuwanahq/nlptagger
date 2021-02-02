@@ -9,6 +9,6 @@ empha_words = "./data/words_to_emphasize.txt" # path to file of words to be emph
 empha_multi = 5 # number of times to repeat/emphasize words
 
 # MySQL Database and Tables
-desc_field = "description" # field from company table where description text is.
-weight_field = "NLPInfoTag" # Field in company table where weights will be stored.
-languages = ["es","fr","zh-cn"] # list of languages to be translated, in addition to english. Order is followed.
+desc_field = "description" # Table company: text to analyze
+weight_field = "NLPInfoTag" # Table company: field where weights will be stored.
+languages = ["es","fr","zh-cn"] # Table tag: list of languages to be translated, in addition to english. Order is followed.
