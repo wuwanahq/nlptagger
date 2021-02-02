@@ -9,6 +9,7 @@ from spacy.lang.char_classes import ALPHA, ALPHA_LOWER, ALPHA_UPPER, CONCAT_QUOT
 from spacy.util import compile_infix_regex
 from spacy.tokenizer import Tokenizer
 from google_trans_new import google_translator  
+from keybert import KeyBERT
 import re
 import math
 import json
@@ -17,6 +18,7 @@ import wordcloud
 import sys
 import time
 import string
+
 
 class NLP_Wuwana():
         
@@ -27,6 +29,8 @@ class NLP_Wuwana():
         spacy_model,
         remove_words = "./data/words_to_remove.txt", 
         replace_words= "./data/words_to_replace.txt",
+        empha_words = False,
+        empha_multi = 1,
         desc_field = "description", 
         max_words = 5,
         ):
@@ -51,7 +55,15 @@ class NLP_Wuwana():
 
         #file with words to be removed from tags
         self.file_words = open(remove_words, "r", encoding="utf-8" )
-        self.remove_words = self.file_words.read().split(";")    
+        self.remove_words = self.file_words.read().split(";")  
+
+        #file with words to emphasize
+        self.empha_multi = empha_multi
+        self.empha_words = empha_words
+
+        if(empha_words):
+            self.file_empha = open(empha_words, "r", encoding="utf-8" )
+            self.words_to_emphasize = self.file_empha.read().split(";")  
 
         #bag of words that should be replaced, such as abbreviations
         with open(replace_words, "r", encoding="utf-8" ) as f_in:
@@ -69,7 +81,8 @@ class NLP_Wuwana():
         try:
             self.nlp = spacy.load("en_core_web_lg")
         except: sys.exit("ERROR: You must download en_core_web_lg spacy model. Use 'python -m spacy download en_core_web_lg' ")
-               
+        
+        
         
 
     ########
@@ -92,10 +105,13 @@ class NLP_Wuwana():
         else:
             query = "select company.ID, company."+str(self.desc_field)+" from company "
                 
-        if((lib!= "gensim") & (lib!= "wordcloud")):
+        if((lib!= "gensim") & (lib!= "wordcloud") & (lib!= "keybert")):
             sys.exit("ERROR: Unknown library: "+str(lib))
         else:
-            pass                
+            pass   
+
+        if(lib=="keybert"):
+            self.model = KeyBERT('distilbert-base-nli-mean-tokens')
         
         updates_list = []        
 
@@ -118,16 +134,15 @@ class NLP_Wuwana():
                 try:
                     
                     text = row[column_pos] 
-                    nouns_ex = self.process_text(text, lib)                    
+                    nouns_ex = self.process_text(text, lib)                                       
                     tags_english = self.get_keywords(nouns_ex, self.max_words, lib=lib)
                     
-                    if(tags_english):
-                        
+                    if(tags_english):                        
                         
                         tags_main = dict()
                         tags_all = dict()
 
-                        tags_english_split = tags_english[1].split(";")
+                        tags_english_split = tags_english[1].split(";")                     
 
                         for l in self.languages:
                             
@@ -151,7 +166,7 @@ class NLP_Wuwana():
 
                                     tag_list.append(tag_split)
 
-                                self.check_and_insert_tag_v2(tags_english_split[x], tag_list)
+                                self.check_and_insert_tag(tags_english_split[x], tag_list)
                                 tag_list = []
                             
                             if(x==0):
@@ -213,7 +228,12 @@ class NLP_Wuwana():
             
         #to lowercase        
         text = text.lower()
-        
+
+        #emphasize words if required
+        if(self.empha_words):
+            text = self.emphasize_words(text)
+
+       
         # Spacy model and custom tokenizer
 
         self.nlp.tokenizer = self.custom_tokenizer()
@@ -247,6 +267,10 @@ class NLP_Wuwana():
             #remove specific words and lemmatize
             sentence = self.remove_common(sentence)            
             fin_sent = sentence
+
+        elif(lib == "keybert"):
+
+            fin_sent = text
         
         else:
             sys.exit("ERROR: LIB NOT FOUND: "+str(lib))
@@ -273,7 +297,7 @@ class NLP_Wuwana():
 
         weights = self.get_weight_string(weights)
 
-        print(idcomp, weights)
+        print("\nID:", idcomp, "\nFIRST:", first_tag,  "\nSECOND:", second_tag, "\nOTHERS:",other_tags,"\nWEIGHTS:",weights)
         
         if(other_tags):
             sql_upd = "UPDATE company set FirstTagID='{0}', SecondTagID='{1}', OtherTags = '{2}', {5} = '{4}'  where ID = {3}".format(first_tag, second_tag, other_tags, idcomp, weights, self.weight_field)
@@ -286,7 +310,7 @@ class NLP_Wuwana():
     
    
 
-    def check_and_insert_tag_v2(self, eng_tag, tags):
+    def check_and_insert_tag(self, eng_tag, tags):
 
         """Checks if tag exists in table tag and creates if not
 
@@ -302,18 +326,15 @@ class NLP_Wuwana():
         
         for i in tags:
             tag_compo += i+";"            
-        sql_tag = "Insert into tag (ID, Names) values ('{0}', '{1}') ".format(eng_tag.lower(), tag_compo.lower())
-
-
+        
         try:
             sql_tag = "Select * from tag where ID = '{0}'".format(eng_tag)
             count = self.cursor_tag.execute(sql_tag)
     
             if(count==0):#not exists
-    
-                sql_tag = "Insert into tag (ID, Names, Keywords) values ('{0}', '{1}', '') ".format(eng_tag, tag_compo)
-                #self.cursor_tag.execute(sql_tag)
-                #self.db.commit()
+                sql_tag = "Insert into tag (ID, Names) values ('{0}', '{1}') ".format(eng_tag.lower().replace("'",""), tag_compo.lower().replace("'",""))
+                self.cursor_tag.execute(sql_tag)
+                self.db.commit()
     
             return eng_tag    
     
@@ -506,6 +527,20 @@ class NLP_Wuwana():
         return emoji_pattern.sub(r'', text)
 
     
+    def emphasize_words(self, text):
+        """ Function that repeats emphasize_words if found in text
+            text: text to find words and modify.        
+        """
+        
+        for i in self.words_to_emphasize:
+            if [True if i.lower() in text.lower() else False]:
+                if(len(i)>0):
+                    for x in range(0, self.empha_multi):
+                        text += " " + i.lower()+"," 
+
+        return text
+
+
 
     def get_keywords(self, words, amount = 3, lib="wordcloud", sep=";"):
         """ Function that extract main keywords from processed text
@@ -514,7 +549,7 @@ class NLP_Wuwana():
         -----------
         words:  bag of words to extract tags
         amount: amount of of words to be extracted. 3 max words for gensim
-        lib: lib to be used - gensim, wordcloud
+        lib: lib to be used - gensim, wordcloud, keybert
         sep: separator for returned words 
         return: main tag, list with all tags, weighted tags
         
@@ -542,9 +577,15 @@ class NLP_Wuwana():
                             if(n<amount):
                                 listw += i+sep
                         n+=1
+
                     return main, listw, wcloud.words_
                 else:
                     return False
+
+            elif(lib=="keybert"):
+
+                tags = self.model.extract_keywords(words, keyphrase_ngram_range=(1, 2), stop_words='english', use_mmr=True, diversity=0.2, top_n=amount)
+                return tags[0],  sep.join(tags), ""
                 
         else:
             #print("Warning: No words to extract tags: ", words)

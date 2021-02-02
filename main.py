@@ -26,8 +26,8 @@ def main():
     else:
         sys.exit("--onlyid arg missing. Please, insert one company id")  
             
-    if ((str(config.lib) != "gensim") & (str(config.lib) != "wordcloud")):
-        print("lib parameter in config.py should be gensim or wordcloud")
+    if ((str(config.lib) != "gensim") & (str(config.lib) != "wordcloud") & (str(config.lib) != "keybert")):
+        print("lib parameter in config.py should be gensim, wordcloud or keybert")
         sys.exit()        
 
     #db connection      
@@ -36,13 +36,15 @@ def main():
     ##MAIN##
         
     nlp_obj = functions.NLP_Wuwana(db, 
-                languages=config.languages,
+                languages = config.languages,
                 spacy_model = config.spacy_model,
-                max_words=config.max_words, 
-                remove_words=config.remove_words,
-                replace_words=config.replace_words,
-                weight_field=config.weight_field,
-                desc_field=config.desc_field )
+                max_words = config.max_words, 
+                remove_words = config.remove_words,
+                replace_words = config.replace_words,
+                empha_words = config.empha_words,
+                weight_field = config.weight_field,
+                empha_multi = config.empha_multi,
+                desc_field = config.desc_field )
     nlp_obj.process_query_companies(onlyid = args.onlyid, lib = config.lib.lower())
 
 
