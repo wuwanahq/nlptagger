@@ -1,7 +1,6 @@
-# "input" : "output"
 {
 "covid-19":"covid",
 "coronavirus":"covid",
 "virus":"covid",
-"coffee specialty":"specialty coffee",
+"coffee specialty":"specialty coffee"
 }
