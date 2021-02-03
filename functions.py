@@ -232,8 +232,7 @@ class NLP_Wuwana():
         #emphasize words if required
         if(self.empha_words):
             text = self.emphasize_words(text)
-
-       
+        
         # Spacy model and custom tokenizer
 
         self.nlp.tokenizer = self.custom_tokenizer()
@@ -249,13 +248,15 @@ class NLP_Wuwana():
             sentence = self.replace_dict(sentence)
             #remove specific words and lemmatize
             sentence = self.remove_common(sentence)
+            #and lemmatize 
+            sentence = self.lemmatize(sentence)
             #last nouns filter
             fin_sent = ''
             for word in self.nlp(sentence):
                 if word.pos_ in ["NOUN"]:
                     fin_sent += word.text + ' '
                     
-        elif(lib == "gensim"):
+        elif((lib == "gensim") or (lib == "keybert")):
 
             #get nouns and adjetives longer than 1 char  
             for word in self.nlp(text):
@@ -264,13 +265,11 @@ class NLP_Wuwana():
             
             #replace some words with others
             sentence = self.replace_dict(sentence)
-            #remove specific words and lemmatize
-            sentence = self.remove_common(sentence)            
+            #remove specific words 
+            sentence = self.remove_common(sentence)  
+            #and lemmatize  
+            sentence = self.lemmatize(sentence)
             fin_sent = sentence
-
-        elif(lib == "keybert"):
-
-            fin_sent = text
         
         else:
             sys.exit("ERROR: LIB NOT FOUND: "+str(lib))
@@ -430,7 +429,7 @@ class NLP_Wuwana():
 
 
     def remove_common(self, sentence):
-        """ Function that remove words in a sentence according to a dictionary or words and lemmatize them (remove_words)
+        """ Function that remove words in a sentence according to a dictionary or words (remove_words)
         
         Parameters
         -----------
@@ -438,13 +437,29 @@ class NLP_Wuwana():
         return: cleaned text
         """
 
+        final_sentence = ''
+
+        # common_words to remove
+        for word in sentence.split(" "):
+            if word.lower() not in self.remove_words:
+                final_sentence += word.lower() + ' '
+        return final_sentence
+
+    def lemmatize(self, sentence):
+        """ Function that extract lemmas from sentence
+        
+        Parameters
+        -----------
+        sentence:  Text to be analysed
+        return: transformed text
+        """
+
         self.nlp.tokenizer = self.custom_tokenizer()
         final_sentence = ''
 
         # common_words to remove
         for word in self.nlp(sentence):
-            if word.lemma_.lower() not in self.remove_words:
-                final_sentence += word.lemma_.lower() + ' '
+            final_sentence += word.lemma_.lower() + ' '
         return final_sentence
 
     def get_weight_string(self, weights):
@@ -533,10 +548,10 @@ class NLP_Wuwana():
         """
         
         for i in self.words_to_emphasize:
-            if [True if i.lower() in text.lower() else False]:
+            if i.lower() in text.lower():
                 if(len(i)>0):
                     for x in range(0, self.empha_multi):
-                        text += " " + i.lower()+"," 
+                        text += ". " + i.lower() 
 
         return text
 
@@ -584,8 +599,11 @@ class NLP_Wuwana():
 
             elif(lib=="keybert"):
 
-                tags = self.model.extract_keywords(words, keyphrase_ngram_range=(1, 2), stop_words='english', use_mmr=True, diversity=0.2, top_n=amount)
-                return tags[0],  sep.join(tags), ""
+                tags = self.model.extract_keywords(words, keyphrase_ngram_range=(0, 2), stop_words='english', use_mmr=True, diversity=0.2, top_n=amount)
+                if(len(tags)>0):
+                    return tags[0],  sep.join(tags), ""
+                else:
+                    return "", "", ""
                 
         else:
             #print("Warning: No words to extract tags: ", words)
