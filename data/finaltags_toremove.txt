@@ -1,1 +1,5 @@
-coffee specialty;coffee specialty;
+coffee specialty;coffee specialty;coffee com;
+pm;pm pm;pm brew;
+brew brunch;brew brunch;
+cuisine specialty;cuisine specialty;
+weekday cerrado;weekday cerrado;
