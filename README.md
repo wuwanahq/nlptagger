@@ -32,11 +32,13 @@ Use the **config.py** to define general aspects of the script:
 - **max_words** = 5 - *Max number of words/tags to be returned by default. Gensims is limited to 3 by default.*
 - **lib** = "keybert" # library to be used (wordcloud / gensim / keybert).
 - **desc_field** = "description" - *field from company table where description text is taken.*
-- **weight_field** = "NLPInfoTag" - *Field in company table where weights will be stored.*
+- **weight_field** = "TagInfo" - *Field in company table where weights will be stored.*
 - **remove_words** = "./data/words_to_remove.txt" - *path to file of words to be removed.*   
 - **replace_words** = "./data/words_to_replace.txt" - *replace_words: path to file of words to be replaced.*
 - **empha_words** = "./data/words_to_emphasize.txt" - *path to file of words to be emphasized.
 - **empha_multi** = 5 - *number of times to repeat/emphasize words.
+- **finaltags_toremove** = "./data/finaltags_toremove.txt" - *tags that never will appear.
+- **finaltags_alwaysmain** = "./data/finaltags_alwaysmain.txt" - *these tags will always be main tags (in order of appeareance).
 - **languages** = ["es","fr","zh-cn"] - *list of languages to be translated, apart from english. Same order is followed in output.*
 - **spacy_model** = "./en_core_web_lg" - *spacy pretrained model.*
 
@@ -61,4 +63,4 @@ Topics will be stored in the following table/fields:
   - FirstTagID (main tag)
   - SecondTagID (second main tag)
   - OtherTags (rest of them)
-  - NLPInfoTag (or other field selected in config file, with the weights returned by NLP algos)
+  - TagInfo(or other field selected in config file, with the weights returned by NLP algos)
