@@ -1,1 +1,6 @@
-{"covid-19":"covid", "coronavirus":"covid", "virus":"covid"}
+{
+"covid-19":"covid",
+"coronavirus":"covid",
+"virus":"covid",
+"coffee specialty":"specialty coffee"
+}
