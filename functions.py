@@ -29,6 +29,8 @@ class NLP_Wuwana():
         spacy_model,
         remove_words = "./data/words_to_remove.txt", 
         replace_words= "./data/words_to_replace.txt",
+        tags_alwaysmain = "./data/finaltags_alwaysmain.txt", 
+        tags_toremove = "./data/finaltags_toremove.txt", 
         empha_words = False,
         empha_multi = 1,
         desc_field = "description", 
@@ -43,9 +45,11 @@ class NLP_Wuwana():
 
         Parameters
         -----------
-        languages: list with languages in format: ["es","fr","zh-cn"]
+        languages: list with languages in format: ["es","fr","zh-cn"].
         remove_words: path to file of words to be removed.
         replace_words: path to file of words to be replaced.
+        tags_alwaysmain: tags that will always be the main tag (just first ocurrence, in order of appeareance).
+        tags_toremove: tags that will never appear.
         spacy_mode: pretrained Spacy model. 
         max_words: max words to be extracted from description texts.
         desc_field: field where text is stored in company table.
@@ -65,6 +69,14 @@ class NLP_Wuwana():
             self.file_empha = open(empha_words, "r", encoding="utf-8" )
             self.words_to_emphasize = self.file_empha.read().split(";")  
 
+        #tags to remove
+        self.file_words = open(tags_toremove, "r", encoding="utf-8" )
+        self.tags_toremove = self.file_words.read().split(";") 
+
+        #tags always as main
+        self.file_words = open(tags_alwaysmain, "r", encoding="utf-8" )
+        self.tags_alwaysmain = self.file_words.read().split(";") 
+
         #bag of words that should be replaced, such as abbreviations
         with open(replace_words, "r", encoding="utf-8" ) as f_in:
             self.replace_words = json.load(f_in)
@@ -81,9 +93,7 @@ class NLP_Wuwana():
         try:
             self.nlp = spacy.load("en_core_web_lg")
         except: sys.exit("ERROR: You must download en_core_web_lg spacy model. Use 'python -m spacy download en_core_web_lg' ")
-        
-        
-        
+           
 
     ########
     #MAIN##
@@ -129,12 +139,10 @@ class NLP_Wuwana():
             rows = cursor.fetchall()
             print("Processing "+str(result)+" companies.")
 
-            for row in rows:
-                
-                try:
-                    
+            for row in rows:                
+                try:                    
                     text = row[column_pos] 
-                    nouns_ex = self.process_text(text, lib)                                       
+                    nouns_ex = self.process_text(text, lib)    
                     tags_english = self.get_keywords(nouns_ex, self.max_words, lib=lib)
                     
                     if(tags_english):                        
@@ -142,7 +150,12 @@ class NLP_Wuwana():
                         tags_main = dict()
                         tags_all = dict()
 
-                        tags_english_split = tags_english[1].split(";")                     
+                        tags_english_split = tags_english[1].split(";") 
+
+                        #remove predefined tags. insert main tags. (from file)
+
+                        tags_english_split = self.remove_finaltags(tags_english_split)
+                        tags_english_split = self.put_maintags(tags_english_split)                         
 
                         for l in self.languages:
                             
@@ -160,8 +173,7 @@ class NLP_Wuwana():
                             if(len(tags_english_split[x])>0):
                                 for s in tags_all.keys():
                                     try:
-                                        tag_split = tags_all[s].split(";")[x].strip()
-                                        
+                                        tag_split = tags_all[s].split(";")[x].strip()                                        
                                     except: tag_split = "-"
 
                                     tag_list.append(tag_split)
@@ -209,14 +221,16 @@ class NLP_Wuwana():
         return: cleaned and transformed text
         """
         
-        #remove hastags, mentions, and links
+        #remove hastags, mentions, and links. Comment this line to let hastags and metions appear.
         text = self.strip_all_entities(self.strip_links(text))
-        #remove special chars
+        #remove special chars.
         text = self.remove_special_characters(text)
-        #remove emojis
+        #remove emojis.
         text = self.remove_emojis(text)
-        #detect source lang and translate to english if necessary
+        #detect source lang and translate to english if necessary.
         source_lang = self.detect_lang(text)
+
+        #print("ORIG TEXT:", text)
         
         if source_lang: 
             if source_lang != 'en':
@@ -226,18 +240,19 @@ class NLP_Wuwana():
             print("WARNING: No specific language detected. Translating sentences (slow)")
             text = self.translate_sentence_by_sentence(text)
             
-        #to lowercase        
+        #to lowercase.
         text = text.lower()
 
-        #emphasize words if required
+        #emphasize words if required. It repeats certain words in text (from file).
         if(self.empha_words):
             text = self.emphasize_words(text)
         
         # Spacy model and custom tokenizer
-
         self.nlp.tokenizer = self.custom_tokenizer()
-        sentence = ''
-        
+        sentence = ''        
+        # Extract sentences
+        text_lines = text.split(".")
+       
         if(lib == "wordcloud"):
         
             #get nouns longer than 1 char
@@ -256,13 +271,13 @@ class NLP_Wuwana():
                 if word.pos_ in ["NOUN"]:
                     fin_sent += word.text + ' '
                     
-        elif((lib == "gensim") or (lib == "keybert")):
+        elif((lib == "gensim")):
 
             #get nouns and adjetives longer than 1 char  
             for word in self.nlp(text):
                 if((word.pos_ in ["NOUN", "ADJ"]) & (len(word.text)>1)):
                     sentence += word.text + ' '
-            
+ 
             #replace some words with others
             sentence = self.replace_dict(sentence)
             #remove specific words 
@@ -270,10 +285,34 @@ class NLP_Wuwana():
             #and lemmatize  
             sentence = self.lemmatize(sentence)
             fin_sent = sentence
-        
+
+        elif((lib == "keybert")):
+
+            new_lines = []
+            
+            for line in text_lines:
+                new_line = []
+                #get nouns and adjetives longer than 1 char  
+                for word in self.nlp(line):
+                    if((word.pos_ in ["NOUN", "ADJ"]) & (len(word.text)>1)):
+                        new_line.append(word.text)
+                    
+                new_lines.append(" ".join(new_line))
+            
+            sentence = ". ".join(new_lines)
+            
+            #replace some words with others
+            sentence = self.replace_dict(sentence)
+            #remove specific words 
+            sentence = self.remove_common(sentence)  
+            #and lemmatize              
+            sentence = self.lemmatize(sentence)
+            fin_sent = sentence
+            #print("SENTENCE:",sentence)
+            
         else:
             sys.exit("ERROR: LIB NOT FOUND: "+str(lib))
-            
+          
         return fin_sent
 
     ########
@@ -306,8 +345,7 @@ class NLP_Wuwana():
             sql_upd = "UPDATE company set FirstTagID='{0}', SecondTagID='', OtherTags = '', {3} = '{2}' where ID = {1}".format(first_tag, idcomp, weights, self.weight_field)
       
         return(sql_upd)
-    
-   
+       
 
     def check_and_insert_tag(self, eng_tag, tags):
 
@@ -437,12 +475,19 @@ class NLP_Wuwana():
         return: cleaned text
         """
 
-        final_sentence = ''
+        final_sentence = ""
+
+        stops = [" ",".",",","-",";"]
 
         # common_words to remove
+ 
         for word in sentence.split(" "):
-            if word.lower() not in self.remove_words:
-                final_sentence += word.lower() + ' '
+            tmp = word.lower()
+            for i in stops:
+                tmp = tmp.replace(i,"")            
+            if tmp not in self.remove_words:
+                final_sentence += word.lower() + " "                
+        
         return final_sentence
 
     def lemmatize(self, sentence):
@@ -518,9 +563,12 @@ class NLP_Wuwana():
         text:  text to be modified
         return: cleaned text
         """
+        bad_chars = [';', ':', '!', "*", "¿", "?", "¡"]
 
-        pat = r'[^a-zA-z0-9.,!?/:;\"\'\s]' 
-        return re.sub(pat, '', text)
+        for i in bad_chars :
+            text = text.replace(i, ' ')
+
+        return text
 
     def remove_emojis(self, text):
         """ Function that removes emojis from a text
@@ -670,3 +718,42 @@ class NLP_Wuwana():
                 return obj[0].strip()
         else:
             return obj.strip()
+
+    def remove_finaltags(self, tags):
+                
+        """Remove tags from final processing
+
+        Parameters
+        -----------
+        tags: list to be cleaned
+        return: cleaned tag list
+       
+        """
+
+        tmp_list = []
+        for i in tags:
+            if i not in self.tags_toremove:
+                tmp_list.append(i)
+        return tmp_list
+
+    def put_maintags(self, tags):
+                
+        """Pririze some tags as main tag
+
+        Parameters
+        -----------
+        tags: list to be modified
+        return: modified tag list
+       
+        """
+
+        for i in self.tags_alwaysmain:
+            if(i in tags):
+                pos = (tags.index(i))
+                tmp = tags[0]
+                tags[pos] = tmp
+                tags[0] = i        
+                return tags
+
+        return tags
+                

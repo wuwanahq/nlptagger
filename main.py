@@ -8,7 +8,7 @@ import sys
 import functions
 import config
 import database_config
-import pymysql
+import  pymysql
 import argparse
 import click
 
@@ -23,6 +23,8 @@ def main():
     if(args.onlyid):
         if args.onlyid.lower() == 'false':
             sys.exit("no valid ID")
+            #args.onlyid = False
+            pass
     else:
         sys.exit("--onlyid arg missing. Please, insert one company id")  
             
@@ -44,6 +46,8 @@ def main():
                 empha_words = config.empha_words,
                 weight_field = config.weight_field,
                 empha_multi = config.empha_multi,
+                tags_alwaysmain= config.finaltags_alwaysmain,
+                tags_toremove= config.finaltags_toremove,
                 desc_field = config.desc_field )
     nlp_obj.process_query_companies(onlyid = args.onlyid, lib = config.lib.lower())
 
